@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: agora-gateway
+  # Le decimos a Spring que no configure seguridad automática
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+
+# Clave pública EdDSA del auth-service
+# En producción esto viene de variable de entorno
+auth:
+  public-key: ${AUTH_EDDSA_PUBLIC_KEY:MCowBQYDK2VwAyEAMLV/pdiJZKdjSl7uvOPALxn+d5p/DkmdnMuM3svVt8U=}
+
+# URLs de los servicios — nombres de contenedor en agora-network
+services:
+  auth-url: ${AUTH_SERVICE_URL}
+  user-url: ${USER_SERVICE_URL}
+  workspace-url: ${WORKSPACE_SERVICE_URL}
+
+# Actuator — solo health para Docker
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
