@@ -6,6 +6,7 @@ public class PublicRoute {
 
     private static final List<String> PUBLIC_PREFIXES = List.of(
             "/public/auth/authenticate", //Login
+            "/public/auth/refresh", //Refresh
             "/actuator/health",
             "/users/create");
 
