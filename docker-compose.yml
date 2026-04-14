@@ -18,6 +18,30 @@ services:
     restart: unless-stopped
     networks:
       - agora-network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-service
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - agora-network
+
+volumes:
+  redis-data:
+    driver: local
+    name: redis-data
 
 networks:
   agora-network:

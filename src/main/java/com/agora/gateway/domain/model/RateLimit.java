@@ -13,14 +13,14 @@ public class RateLimit {
 
     // Rutas de autenticación — límite estricto para prevenir fuerza bruta
     // 10 intentos por minuto es generoso para un humano, restrictivo para un bot
-    public static final int AUTH_REQUESTS_PER_MINUTE = 10;
+    public static final int AUTH_REQUESTS_PER_MINUTE = 5;
 
     // Rutas normales de la API — límite más amplio para uso normal
     public static final int API_REQUESTS_PER_MINUTE = 50;
 
     // Capacidad inicial del bucket — permite pequeñas ráfagas
     // Un usuario puede hacer 20 peticiones rápidas antes de ser limitado
-    public static final int AUTH_BURST_CAPACITY = 20;
+    public static final int AUTH_BURST_CAPACITY = 10;
     public static final int API_BURST_CAPACITY = 200;
 
     /**
