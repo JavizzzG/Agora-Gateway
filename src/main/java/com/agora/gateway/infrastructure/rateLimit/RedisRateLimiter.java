@@ -38,7 +38,8 @@ public class RedisRateLimiter implements RateLimiterPort {
                 ? RateLimit.AUTH_REQUESTS_PER_MINUTE
                 : RateLimit.API_REQUESTS_PER_MINUTE;
 
-        String redisKey = "ratelimit:" + clientKey;
+        String routeGroup = isAuthRoute ? "auth" : "api";
+        String redisKey = "ratelimit:" + routeGroup + ":" + clientKey;
 
         try {
             // Incrementa el contador atómicamente

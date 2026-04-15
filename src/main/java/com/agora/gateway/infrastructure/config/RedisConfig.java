@@ -53,4 +53,18 @@ public class RedisConfig {
 
         return new ReactiveRedisTemplate<>(factory, context);
     }
+
+    /**
+     * RedisTemplate para cachear metadatos de tokens válidos.
+     */
+    @Bean
+    public RedisTemplate<String, String> tokenCacheRedisTemplate(
+            org.springframework.data.redis.connection.RedisConnectionFactory factory) {
+
+        RedisTemplate<String, String> template = new RedisTemplate<>();
+        template.setConnectionFactory(factory);
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new StringRedisSerializer());
+        return template;
+    }
 }

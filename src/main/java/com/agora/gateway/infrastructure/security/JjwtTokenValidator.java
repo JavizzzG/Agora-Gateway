@@ -11,7 +11,7 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("jjwtTokenValidator")
 public class JjwtTokenValidator implements TokenValidatorPort {
 
     private final EdDsaKeyProvider keyProvider;

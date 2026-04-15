@@ -21,6 +21,10 @@ spring:
 # En producción esto viene de variable de entorno
 auth:
   public-key: ${AUTH_EDDSA_PUBLIC_KEY:MCowBQYDK2VwAyEAMLV/pdiJZKdjSl7uvOPALxn+d5p/DkmdnMuM3svVt8U=}
+  token-cache:
+    enabled: ${AUTH_TOKEN_CACHE_ENABLED:true}
+    max-ttl-seconds: ${AUTH_TOKEN_CACHE_MAX_TTL_SECONDS:60}
+    key-prefix: ${AUTH_TOKEN_CACHE_KEY_PREFIX:auth:token:valid:}
 
 # URLs de los servicios — nombres de contenedor en agora-network
 services:
