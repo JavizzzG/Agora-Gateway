@@ -36,6 +36,7 @@ public class RouteConfig {
                 // Ruta pública — el JwtFilterAdapter la deja pasar
                 .route("auth-service", r -> r
                         .path("/public/auth/**")
+                        .filters(f -> f.circuitBreaker(config -> config.setName("auth-service").setFallbackUri("forward:/fallback/public/auth")))
                         .uri(URI.create(authServiceUrl))
                 )
 
@@ -43,6 +44,7 @@ public class RouteConfig {
                 // Protegida — requiere JWT válido
                 .route("user-service", r -> r
                         .path("/users/**")
+                        .filters(f -> f.circuitBreaker(config -> config.setName("user-service").setFallbackUri("forward:/fallback/users")))
                         .uri(URI.create(userServiceUrl))
                 )
 
@@ -50,6 +52,7 @@ public class RouteConfig {
                 // Protegida — requiere JWT válido
                 .route("workspace-service", r -> r
                         .path("/workspaces/**")
+                        .filters(f -> f.circuitBreaker(config -> config.setName("workspace-service").setFallbackUri("forward:/fallback/workspaces")))
                         .uri(URI.create(workspaceServiceUrl))
                 )
 

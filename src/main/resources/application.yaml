@@ -4,7 +4,9 @@ server:
 spring:
   application:
     name: agora-gateway
-  # Le decimos a Spring que no configure seguridad automática
+  cloud:
+    discovery:
+      enabled: false
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
@@ -32,12 +34,64 @@ services:
   user-url: ${USER_SERVICE_URL}
   workspace-url: ${WORKSPACE_SERVICE_URL}
 
-# Actuator — solo health para Docker
+# Resilience4j — circuit breakers
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true    # ← agrega esta línea
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.cloud.gateway.support.NotFoundException
+
+    instances:
+      # Circuit breaker para el user-service
+      user-service:
+        base-config: default
+
+      # Circuit breaker para el workspace-service
+      workspace-service:
+        base-config: default
+
+      # Auth-service con umbral más permisivo
+      # Es crítico para el login — le damos más margen
+      auth-service:
+        base-config: default
+        failure-rate-threshold: 70
+        wait-duration-in-open-state: 15s
+
+  # Timeout por request
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 5s
+    instances:
+      user-service:
+        base-config: default
+      workspace-service:
+        base-config: default
+      auth-service:
+        timeout-duration: 10s
+
+# Exponer métricas del circuit breaker en actuator
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
 
 logging:
   level:
