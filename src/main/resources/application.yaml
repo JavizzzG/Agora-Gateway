@@ -95,4 +95,6 @@ management:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
+    root: INFO
+    com.agora.gateway: INFO
+    org.springframework.cloud.gateway: INFO
