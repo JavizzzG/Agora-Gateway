@@ -12,7 +12,7 @@ public class PublicRoute {
 
 
     // Respond true if the path not required authentication
-    public static Boolean matches(String path){
+    public static boolean matches(String path){
         return PUBLIC_PREFIXES.stream()
                 .anyMatch(path::startsWith);
     }

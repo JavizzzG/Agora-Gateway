@@ -2,6 +2,11 @@ package com.agora.gateway.infrastructure.http.filters;
 
 import com.agora.gateway.domain.model.RateLimit;
 import com.agora.gateway.domain.ports.out.RateLimiterPort;
+import com.agora.gateway.infrastructure.http.RequestContextSupport;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -10,6 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 /**
  * Filtro de rate limiting — corre después del filtro JWT.
@@ -25,10 +33,14 @@ import reactor.core.publisher.Mono;
 @Component
 public class RateLimitFilter implements GlobalFilter, Ordered {
 
-    private final RateLimiterPort rateLimiter;
+    private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
-    public RateLimitFilter(RateLimiterPort rateLimiter) {
+    private final RateLimiterPort rateLimiter;
+    private final ObjectMapper objectMapper;
+
+    public RateLimitFilter(RateLimiterPort rateLimiter, ObjectMapper objectMapper) {
         this.rateLimiter = rateLimiter;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -38,6 +50,10 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
         boolean isAuth  = RateLimit.isAuthRoute(path);
 
         if (!rateLimiter.isAllowed(clientKey, isAuth)) {
+            log.warn("requestId={} path={} clientKey={} rateLimited=true",
+                    RequestContextSupport.getRequestId(exchange),
+                    path,
+                    clientKey);
             return buildRateLimitResponse(exchange, isAuth);
         }
 
@@ -62,9 +78,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
         }
 
         // Fallback a IP — para rutas públicas como /auth/authenticate
-        String ip = exchange.getRequest().getRemoteAddress() != null
-                ? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress()
-                : "unknown";
+        String ip = RequestContextSupport.resolveClientIp(exchange);
         return "ip:" + ip;
     }
 
@@ -81,19 +95,32 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
                 ? "Demasiados intentos de autenticación. Espera 1 minuto."
                 : "Demasiadas peticiones. Espera 1 minuto.";
 
-        String body = String.format(
-                "{\"status\":429,\"error\":\"TOO_MANY_REQUESTS\"," +
-                        "\"message\":\"%s\",\"retryAfter\":60}",
-                message
+        String body = buildJsonBody(exchange, message);
+
+        var buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
+        return response.writeWith(Mono.just(buffer));
+    }
+
+    private String buildJsonBody(ServerWebExchange exchange, String message) {
+        Map<String, Object> body = Map.of(
+                "status", 429,
+                "error", "TOO_MANY_REQUESTS",
+                "message", message,
+                "retryAfter", 60,
+                "path", exchange.getRequest().getURI().getPath(),
+                "requestId", RequestContextSupport.getRequestId(exchange)
         );
 
-        var buffer = response.bufferFactory().wrap(body.getBytes());
-        return response.writeWith(Mono.just(buffer));
+        try {
+            return objectMapper.writeValueAsString(body);
+        } catch (JsonProcessingException ex) {
+            return "{\"status\":429,\"error\":\"TOO_MANY_REQUESTS\",\"message\":\"Rate limit exceeded\"}";
+        }
     }
 
     @Override
     public int getOrder() {
         // Justo después del filtro JWT
-        return Ordered.HIGHEST_PRECEDENCE + 1;
+        return Ordered.HIGHEST_PRECEDENCE + 20;
     }
 }

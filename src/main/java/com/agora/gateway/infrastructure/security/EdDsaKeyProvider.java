@@ -14,11 +14,15 @@ public class EdDsaKeyProvider {
     @Value("${auth.public-key}")
     private String publicKeyBase64;
 
-    private PublicKey cachedKey;
+    private volatile PublicKey cachedKey;
 
     public PublicKey getPublicKey(){
-        if(cachedKey == null){
-            cachedKey = buildPublicKey();
+        if (cachedKey == null) {
+            synchronized (this) {
+                if (cachedKey == null) {
+                    cachedKey = buildPublicKey();
+                }
+            }
         }
         return cachedKey;
     }
@@ -31,9 +35,7 @@ public class EdDsaKeyProvider {
             KeyFactory keyFactory = KeyFactory.getInstance("EdDSA");
             return keyFactory.generatePublic(keySpec);
         } catch(Exception e){
-
-            throw new IllegalStateException("Public key not loaded. " + "Verify the public key");
-
+            throw new IllegalStateException("Public key not loaded. Verify the public key", e);
         }
 
     }

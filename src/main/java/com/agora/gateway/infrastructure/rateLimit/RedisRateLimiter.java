@@ -2,6 +2,8 @@ package com.agora.gateway.infrastructure.rateLimit;
 
 import com.agora.gateway.domain.model.RateLimit;
 import com.agora.gateway.domain.ports.out.RateLimiterPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -25,6 +27,8 @@ import java.time.Duration;
 @Primary
 @Component("gatewayRedisRateLimiter")
 public class RedisRateLimiter implements RateLimiterPort {
+
+    private static final Logger log = LoggerFactory.getLogger(RedisRateLimiter.class);
 
     private final RedisTemplate<String, Long> redisTemplate;
 
@@ -59,10 +63,7 @@ public class RedisRateLimiter implements RateLimiterPort {
             // Si Redis no está disponible, permitimos el tráfico
             // Es mejor tener el sistema funcionando sin rate limiting
             // que tumbar el gateway porque Redis cayó
-            System.err.printf(
-                    "[GATEWAY WARN] Redis no disponible para rate limiting: %s. " +
-                            "Permitiendo request.%n", e.getMessage()
-            );
+            log.warn("redisRateLimitUnavailable key={} message={} allowingRequest=true", redisKey, e.getMessage(), e);
             return true;
         }
     }

@@ -14,7 +14,7 @@ public class AuthToken {
     public String getUserId() {return userId;}
     public Instant getExpiresAt() {return expiresAt;}
 
-    public Boolean isExpired(){
+    public boolean isExpired(){
         return Instant.now().isAfter(expiresAt);
     }
 

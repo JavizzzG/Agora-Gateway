@@ -4,6 +4,8 @@ import com.agora.gateway.domain.model.AuthToken;
 import com.agora.gateway.domain.ports.in.AuthenticationPort.AuthenticationException;
 import com.agora.gateway.domain.ports.out.TokenValidatorPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,6 +25,8 @@ import java.util.HexFormat;
 @Primary
 @Component
 public class RedisCachedTokenValidator implements TokenValidatorPort {
+
+    private static final Logger log = LoggerFactory.getLogger(RedisCachedTokenValidator.class);
 
     private final TokenValidatorPort delegate;
     private final RedisTemplate<String, String> tokenCacheRedisTemplate;
@@ -80,6 +84,7 @@ public class RedisCachedTokenValidator implements TokenValidatorPort {
             return new AuthToken(entry.userId(), entry.expiresAt());
         } catch (Exception ignored) {
             // Si Redis falla o el payload está corrupto, seguimos con validación normal.
+            log.debug("Token cache read failed for key={}", redisKey, ignored);
             return null;
         }
     }
@@ -97,6 +102,7 @@ public class RedisCachedTokenValidator implements TokenValidatorPort {
             tokenCacheRedisTemplate.opsForValue().set(redisKey, rawEntry, Duration.ofSeconds(effectiveTtl));
         } catch (Exception ignored) {
             // Cache best-effort: nunca debe bloquear autenticación.
+            log.debug("Token cache write failed for key={}", redisKey, ignored);
         }
     }
 
