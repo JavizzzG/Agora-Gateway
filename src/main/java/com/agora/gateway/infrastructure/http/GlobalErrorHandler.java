@@ -2,8 +2,8 @@ package com.agora.gateway.infrastructure.http;
 
 import com.agora.gateway.domain.model.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -14,6 +14,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.util.concurrent.TimeoutException;
@@ -42,24 +43,28 @@ import java.util.concurrent.TimeoutException;
 @Order(-1) // -1 para que corra ANTES que el manejador de errores por defecto de Spring
 public class GlobalErrorHandler implements ErrorWebExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalErrorHandler.class);
+
     private final ObjectMapper objectMapper;
 
-    public GlobalErrorHandler() {
-        // Configuramos Jackson para serializar Instant como ISO-8601
-        this.objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    public GlobalErrorHandler(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+        if (exchange.getResponse().isCommitted()) {
+            return Mono.error(ex);
+        }
+
         String path = exchange.getRequest().getURI().getPath();
+        String requestId = RequestContextSupport.getRequestId(exchange);
 
         // Determinamos qué tipo de error es y construimos la respuesta apropiada
-        ErrorResponse errorResponse = mapExceptionToError(ex, path);
+        ErrorResponse errorResponse = mapExceptionToError(ex, path, requestId);
 
         // Logueamos el error para que quede registro en los logs del gateway
-        logError(path, ex, errorResponse.getStatus());
+        logError(path, ex, errorResponse.getStatus(), requestId);
 
         return writeResponse(exchange, errorResponse);
     }
@@ -68,18 +73,18 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
      * Mapea cada tipo de excepción a un ErrorResponse apropiado.
      * Aquí está la inteligencia del manejador.
      */
-    private ErrorResponse mapExceptionToError(Throwable ex, String path) {
+    private ErrorResponse mapExceptionToError(Throwable ex, String path, String requestId) {
 
         // Servicio destino no disponible — nadie escucha en ese puerto
         if (ex instanceof ConnectException
                 || ex instanceof UnknownHostException) {
-            return ErrorResponse.serviceUnavailable(path);
+            return ErrorResponse.serviceUnavailable(path, requestId);
         }
 
         // Timeout — el servicio tardó demasiado
         if (ex instanceof TimeoutException
                 || ex.getClass().getSimpleName().contains("Timeout")) {
-            return ErrorResponse.gatewayTimeout(path);
+            return ErrorResponse.gatewayTimeout(path, requestId);
         }
 
         // ResponseStatusException — Spring lanza esto para 404, 405, etc.
@@ -87,7 +92,7 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
             HttpStatus status = HttpStatus.resolve(rse.getStatusCode().value());
 
             if (status == HttpStatus.NOT_FOUND) {
-                return ErrorResponse.notFound(path);
+                return ErrorResponse.notFound(path, requestId);
             }
 
             // Para otros ResponseStatusException usamos el status que trae
@@ -95,17 +100,18 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
                     rse.getStatusCode().value(),
                     rse.getStatusCode().toString(),
                     rse.getReason() != null ? rse.getReason() : "Error en la solicitud",
-                    path
+                    path,
+                    requestId
             );
         }
 
         // IO errors generales — problemas de red
         if (ex instanceof IOException) {
-            return ErrorResponse.serviceUnavailable(path);
+            return ErrorResponse.serviceUnavailable(path, requestId);
         }
 
         // Cualquier otra cosa — error interno del gateway
-        return ErrorResponse.internalError(path);
+        return ErrorResponse.internalError(path, requestId);
     }
 
     /**
@@ -124,7 +130,7 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
         } catch (Exception e) {
             // Si Jackson falla (no debería), fallback a string manual
             bytes = ("{\"status\":500,\"error\":\"INTERNAL_ERROR\"," +
-                    "\"message\":\"Error serializando respuesta\"}").getBytes();
+                    "\"message\":\"Error serializando respuesta\"}").getBytes(StandardCharsets.UTF_8);
         }
 
         var buffer = response.bufferFactory().wrap(bytes);
@@ -135,13 +141,13 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
      * Log estructurado del error.
      * Nivel WARN para errores de servicios destino, ERROR para errores internos.
      */
-    private void logError(String path, Throwable ex, int status) {
-        if (status >= 500) {
-            System.err.printf("[GATEWAY ERROR] path=%s status=%d error=%s message=%s%n",
-                    path, status, ex.getClass().getSimpleName(), ex.getMessage());
+    private void logError(String path, Throwable ex, int status, String requestId) {
+        if (status >= 500 && status < 600) {
+            log.error("requestId={} path={} status={} errorType={} message={}",
+                    requestId, path, status, ex.getClass().getSimpleName(), ex.getMessage(), ex);
         } else {
-            System.out.printf("[GATEWAY WARN] path=%s status=%d error=%s%n",
-                    path, status, ex.getClass().getSimpleName());
+            log.warn("requestId={} path={} status={} errorType={} message={}",
+                    requestId, path, status, ex.getClass().getSimpleName(), ex.getMessage());
         }
     }
 }
