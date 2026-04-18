@@ -1,0 +1,99 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: agora-gateway
+  cloud:
+    discovery:
+      enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 2000ms
+      connect-timeout: 2000ms
+
+# EdDSA public key used to verify JWTs from auth-service.
+# In production this should come from environment variables.
+auth:
+  public-key: ${AUTH_EDDSA_PUBLIC_KEY:MCowBQYDK2VwAyEAMLV/pdiJZKdjSl7uvOPALxn+d5p/DkmdnMuM3svVt8U=}
+  token-cache:
+    enabled: ${AUTH_TOKEN_CACHE_ENABLED:true}
+    max-ttl-seconds: ${AUTH_TOKEN_CACHE_MAX_TTL_SECONDS:60}
+    key-prefix: ${AUTH_TOKEN_CACHE_KEY_PREFIX:auth:token:valid:}
+
+# Downstream service URLs (container names inside the Docker network).
+services:
+  auth-url: ${AUTH_SERVICE_URL}
+  user-url: ${USER_SERVICE_URL}
+  workspace-url: ${WORKSPACE_SERVICE_URL}
+
+# Resilience4j circuit breaker configuration.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.cloud.gateway.support.NotFoundException
+
+    instances:
+      # user-service breaker
+      user-service:
+        base-config: default
+
+      # workspace-service breaker
+      workspace-service:
+        base-config: default
+
+      # auth-service breaker with more tolerant thresholds for login availability
+      auth-service:
+        base-config: default
+        failure-rate-threshold: 70
+        wait-duration-in-open-state: 15s
+
+  # Per-request timeout settings
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 5s
+    instances:
+      user-service:
+        base-config: default
+      workspace-service:
+        base-config: default
+      auth-service:
+        timeout-duration: 10s
+
+# Expose circuit breaker health and metrics in actuator.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.agora.gateway: INFO
+    org.springframework.cloud.gateway: INFO
