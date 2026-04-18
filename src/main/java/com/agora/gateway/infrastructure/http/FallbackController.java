@@ -13,14 +13,12 @@ import java.time.Instant;
 import java.util.Map;
 
 /**
- * Controlador de fallback para los circuit breakers.
+ * Fallback endpoints used by circuit breakers.
  *
- * Cuando el circuito de un servicio está OPEN, el gateway
- * redirige internamente aquí en lugar de intentar contactar
- * al servicio caído.
+ * When a downstream circuit is OPEN, the gateway forwards the request
+ * here instead of calling the failing service.
  *
- * El cliente recibe una respuesta 503 clara e inmediata
- * en lugar de esperar un timeout de 30 segundos.
+ * Clients receive an immediate and explicit 503 response.
  */
 @RestController
 public class FallbackController {
@@ -32,7 +30,7 @@ public class FallbackController {
             ServerWebExchange exchange) {
         return buildFallbackResponse(
                 exchange,
-                "El servicio de autenticación no está disponible.",
+                "Authentication service is currently unavailable.",
                 "AUTH_SERVICE_UNAVAILABLE"
         );
     }
@@ -42,7 +40,7 @@ public class FallbackController {
             ServerWebExchange exchange) {
         return buildFallbackResponse(
                 exchange,
-                "El servicio de usuarios no está disponible.",
+                "User service is currently unavailable.",
                 "USER_SERVICE_UNAVAILABLE"
         );
     }
@@ -52,7 +50,7 @@ public class FallbackController {
             ServerWebExchange exchange) {
         return buildFallbackResponse(
                 exchange,
-                "El servicio de workspaces no está disponible.",
+                "Workspace service is currently unavailable.",
                 "WORKSPACE_SERVICE_UNAVAILABLE"
         );
     }

@@ -20,15 +20,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
- * Filtro de rate limiting — corre después del filtro JWT.
+ * Rate-limit filter executed after JWT authentication.
  *
- * Orden de filtros:
+ * Filter order:
  * 1. JwtFilterAdapter   (HIGHEST_PRECEDENCE = -2147483648)
  * 2. RateLimitFilter    (HIGHEST_PRECEDENCE + 1 = -2147483647)
  *
- * Primero validamos identidad, luego aplicamos el límite.
- * Así el límite es por usuario autenticado cuando hay token,
- * o por IP cuando no hay token (rutas públicas).
+ * Identity is resolved first, then limits are applied.
+ * Limits are per authenticated user when possible,
+ * otherwise by client IP for public endpoints.
  */
 @Component
 public class RateLimitFilter implements GlobalFilter, Ordered {
@@ -61,23 +61,21 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * Determina la clave del cliente para el rate limiting.
+     * Resolves the client key used for rate limiting.
      *
-     * Si el request ya pasó por el filtro JWT y tiene X-User-Id,
-     * usamos el userId — el límite es por usuario, no por IP.
-     * Esto es más justo: varios usuarios detrás del mismo proxy
-     * no comparten el mismo límite.
+     * If the JWT filter already added X-User-Id, we use userId
+     * so multiple users behind the same proxy are isolated.
      *
-     * Si no hay userId (ruta pública), usamos la IP.
+     * If userId is missing (public route), fallback to IP.
      */
     private String resolveClientKey(ServerWebExchange exchange) {
-        // Intentamos usar el userId que JwtFilterAdapter agregó
+        // Try authenticated identity first.
         String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
         if (userId != null && !userId.isBlank()) {
             return "user:" + userId;
         }
 
-        // Fallback a IP — para rutas públicas como /auth/authenticate
+        // Fallback to client IP for public routes.
         String ip = RequestContextSupport.resolveClientIp(exchange);
         return "ip:" + ip;
     }
@@ -88,12 +86,12 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
         response.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        // Header estándar que le dice al cliente cuándo puede reintentar
+        // Standard retry hint for clients.
         response.getHeaders().add("Retry-After", "60");
 
         String message = isAuth
-                ? "Demasiados intentos de autenticación. Espera 1 minuto."
-                : "Demasiadas peticiones. Espera 1 minuto.";
+                ? "Too many authentication attempts. Retry in 1 minute."
+                : "Too many requests. Retry in 1 minute.";
 
         String body = buildJsonBody(exchange, message);
 
@@ -120,7 +118,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        // Justo después del filtro JWT
+        // Run right after the JWT filter.
         return Ordered.HIGHEST_PRECEDENCE + 20;
     }
 }

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthenticationUseCase implements AuthenticationPort {
 
-    // Dependencia hacia afuera — a través del puerto, no directo a JJWT
+    // Outbound dependency via domain port, not tied to a concrete JWT library.
     private final TokenValidatorPort tokenValidator;
 
     public AuthenticationUseCase(TokenValidatorPort tokenValidator){

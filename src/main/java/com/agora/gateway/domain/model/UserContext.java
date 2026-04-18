@@ -1,5 +1,8 @@
 package com.agora.gateway.domain.model;
 
+/**
+ * Minimal authenticated user context propagated to downstream services.
+ */
 public class UserContext {
 
     private final String userId;
@@ -8,7 +11,7 @@ public class UserContext {
         this.userId = userId;
     }
 
-    // (Factory method) - create the user context from a token
+    // Factory method that extracts user context from validated token data.
     public static UserContext from(AuthToken token){
         return new UserContext(token.getUserId());
     }

@@ -7,11 +7,10 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
 /**
- * Desactiva el comportamiento por defecto de Spring Security.
+ * Disables default Spring Security behavior.
  *
- * Sin esto, Spring Security bloquearía todos los requests
- * con su propio mecanismo antes de que lleguen a nuestro filtro.
- * Nosotros manejamos toda la seguridad en JwtFilterAdapter.
+ * Without this, Spring Security would block requests before they reach
+ * the gateway's custom JWT filter.
  */
 @Configuration
 @EnableWebFluxSecurity

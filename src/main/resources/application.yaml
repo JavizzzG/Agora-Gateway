@@ -19,8 +19,8 @@ spring:
       timeout: 2000ms
       connect-timeout: 2000ms
 
-# Clave pública EdDSA del auth-service
-# En producción esto viene de variable de entorno
+# EdDSA public key used to verify JWTs from auth-service.
+# In production this should come from environment variables.
 auth:
   public-key: ${AUTH_EDDSA_PUBLIC_KEY:MCowBQYDK2VwAyEAMLV/pdiJZKdjSl7uvOPALxn+d5p/DkmdnMuM3svVt8U=}
   token-cache:
@@ -28,13 +28,13 @@ auth:
     max-ttl-seconds: ${AUTH_TOKEN_CACHE_MAX_TTL_SECONDS:60}
     key-prefix: ${AUTH_TOKEN_CACHE_KEY_PREFIX:auth:token:valid:}
 
-# URLs de los servicios — nombres de contenedor en agora-network
+# Downstream service URLs (container names inside the Docker network).
 services:
   auth-url: ${AUTH_SERVICE_URL}
   user-url: ${USER_SERVICE_URL}
   workspace-url: ${WORKSPACE_SERVICE_URL}
 
-# Resilience4j — circuit breakers
+# Resilience4j circuit breaker configuration.
 resilience4j:
   circuitbreaker:
     configs:
@@ -45,29 +45,28 @@ resilience4j:
         sliding-window-size: 10
         minimum-number-of-calls: 5
         automatic-transition-from-open-to-half-open-enabled: true
-        register-health-indicator: true    # ← agrega esta línea
+        register-health-indicator: true
         record-exceptions:
           - java.io.IOException
           - java.util.concurrent.TimeoutException
           - org.springframework.cloud.gateway.support.NotFoundException
 
     instances:
-      # Circuit breaker para el user-service
+      # user-service breaker
       user-service:
         base-config: default
 
-      # Circuit breaker para el workspace-service
+      # workspace-service breaker
       workspace-service:
         base-config: default
 
-      # Auth-service con umbral más permisivo
-      # Es crítico para el login — le damos más margen
+      # auth-service breaker with more tolerant thresholds for login availability
       auth-service:
         base-config: default
         failure-rate-threshold: 70
         wait-duration-in-open-state: 15s
 
-  # Timeout por request
+  # Per-request timeout settings
   timelimiter:
     configs:
       default:
@@ -80,7 +79,7 @@ resilience4j:
       auth-service:
         timeout-duration: 10s
 
-# Exponer métricas del circuit breaker en actuator
+# Expose circuit breaker health and metrics in actuator.
 management:
   endpoints:
     web:
