@@ -8,7 +8,8 @@ public class PublicRoute {
             "/public/auth/authenticate", //Login
             "/public/auth/refresh", //Refresh
             "/actuator/health",
-            "/users/create");
+            "/users/create",
+            "/public/auth/google/callback"); // Google OAuth callback
 
 
     // Respond true if the path not required authentication

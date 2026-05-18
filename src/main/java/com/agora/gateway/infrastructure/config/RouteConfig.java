@@ -35,7 +35,7 @@ public class RouteConfig {
                 // ── Auth service ─────────────────────────────
                 // Ruta pública — el JwtFilterAdapter la deja pasar
                 .route("auth-service", r -> r
-                        .path("/public/auth/**")
+                        .path("/public/auth/**", "/auth/google/callback")
                         .filters(f -> f.circuitBreaker(config -> config.setName("auth-service").setFallbackUri("forward:/fallback/public/auth")))
                         .uri(URI.create(authServiceUrl))
                 )

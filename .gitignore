@@ -34,3 +34,5 @@ build/
 
 ### Environment ###
 .env
+
+docker-compose.yml
