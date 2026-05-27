@@ -11,7 +11,8 @@ public class PublicRoute {
             "/public/auth/authenticate", // Login
             "/public/auth/refresh", // Refresh token
             "/actuator/health",
-            "/users/create");
+            "/users/create",
+            "/public/auth/google/callback"); // Google OAuth callback
 
 
     // Returns true when the route is publicly accessible.
