@@ -10,17 +10,17 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
- * Configura los clientes de Redis que usa el gateway.
+ * Configures Redis clients used by the gateway.
  *
- * RedisTemplate — para operaciones síncronas (rate limiting)
- * ReactiveRedisTemplate — disponible si lo necesitas en filtros reactivos
+ * RedisTemplate: sync operations (rate limiting, token cache)
+ * ReactiveRedisTemplate: available for reactive use cases
  */
 @Configuration
 public class RedisConfig {
 
     /**
-     * RedisTemplate configurado para keys String y values Long.
-     * Lo usa RedisRateLimiter para incrementar contadores.
+     * RedisTemplate configured with String keys and Long values.
+     * Used by RedisRateLimiter to increment counters.
      */
     @Bean
     public RedisTemplate<String, Long> redisTemplate(
@@ -29,17 +29,17 @@ public class RedisConfig {
         RedisTemplate<String, Long> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
 
-        // Keys como String — "ratelimit:ip:190.24.18.3:auth"
+        // Keys as String (example: "ratelimit:auth:user:123").
         template.setKeySerializer(new StringRedisSerializer());
 
-        // Values como Long — el contador de requests
+        // Values as Long request counters.
         template.setValueSerializer(new GenericToStringSerializer<>(Long.class));
 
         return template;
     }
 
     /**
-     * ReactiveRedisTemplate — para uso futuro en contextos reactivos.
+     * ReactiveRedisTemplate for future reactive integrations.
      */
     @Bean
     public ReactiveRedisTemplate<String, Long> reactiveRedisTemplate(
@@ -55,7 +55,7 @@ public class RedisConfig {
     }
 
     /**
-     * RedisTemplate para cachear metadatos de tokens válidos.
+     * RedisTemplate for caching metadata of validated tokens.
      */
     @Bean
     public RedisTemplate<String, String> tokenCacheRedisTemplate(

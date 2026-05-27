@@ -9,12 +9,12 @@ import org.springframework.context.annotation.Configuration;
 import java.net.URI;
 
 /**
- * Define las rutas del gateway en código Java.
+ * Declares gateway routes in Java.
  *
- * Cada ruta tiene:
- * - id: nombre único para logs y debugging
- * - path: el patrón de URL que activa esta ruta
- * - uri: el servicio destino dentro de agora-network
+ * Each route defines:
+ * - id: unique name for logs and debugging
+ * - path: URL pattern that triggers the route
+ * - uri: downstream service destination
  */
 @Configuration
 public class RouteConfig {
@@ -32,24 +32,21 @@ public class RouteConfig {
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
 
-                // ── Auth service ─────────────────────────────
-                // Ruta pública — el JwtFilterAdapter la deja pasar
+                // Public auth endpoints (no JWT required).
                 .route("auth-service", r -> r
                         .path("/public/auth/**", "/auth/google/callback")
                         .filters(f -> f.circuitBreaker(config -> config.setName("auth-service").setFallbackUri("forward:/fallback/public/auth")))
                         .uri(URI.create(authServiceUrl))
                 )
 
-                // ── User service ──────────────────────────────
-                // Protegida — requiere JWT válido
+                // Protected user endpoints (JWT required).
                 .route("user-service", r -> r
                         .path("/users/**")
                         .filters(f -> f.circuitBreaker(config -> config.setName("user-service").setFallbackUri("forward:/fallback/users")))
                         .uri(URI.create(userServiceUrl))
                 )
 
-                // ── Workspace service ─────────────────────────
-                // Protegida — requiere JWT válido
+                // Protected workspace endpoints (JWT required).
                 .route("workspace-service", r -> r
                         .path("/workspaces/**")
                         .filters(f -> f.circuitBreaker(config -> config.setName("workspace-service").setFallbackUri("forward:/fallback/workspaces")))

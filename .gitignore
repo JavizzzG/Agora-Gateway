@@ -1,4 +1,5 @@
 HELP.md
+GATEWAY_STUDY_GUIDE.md
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

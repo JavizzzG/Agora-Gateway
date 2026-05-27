@@ -3,10 +3,10 @@ package com.agora.gateway.domain.model;
 import java.time.Instant;
 
 /**
- * Respuesta de error estándar del gateway.
- * Todos los errores del sistema tienen esta forma — sin excepciones.
+ * Standard gateway error payload.
+ * Every error response in the gateway should follow this shape.
  *
- * El cliente siempre sabe qué esperar cuando algo falla.
+ * This keeps error handling predictable for clients.
  */
 public class ErrorResponse {
 
@@ -26,12 +26,12 @@ public class ErrorResponse {
         this.timestamp = Instant.now();
     }
 
-    // Métodos estáticos para construir errores comunes — más legible que el constructor
+    // Factory helpers for common gateway errors.
     public static ErrorResponse serviceUnavailable(String path, String requestId) {
         return new ErrorResponse(
                 503,
                 "SERVICE_UNAVAILABLE",
-                "El servicio no está disponible en este momento. Intenta más tarde.",
+                "The service is currently unavailable. Please try again later.",
                 path,
                 requestId
         );
@@ -41,7 +41,7 @@ public class ErrorResponse {
         return new ErrorResponse(
                 504,
                 "GATEWAY_TIMEOUT",
-                "El servicio tardó demasiado en responder.",
+                "The service took too long to respond.",
                 path,
                 requestId
         );
@@ -51,7 +51,7 @@ public class ErrorResponse {
         return new ErrorResponse(
                 404,
                 "NOT_FOUND",
-                "La ruta solicitada no existe.",
+                "The requested route does not exist.",
                 path,
                 requestId
         );
@@ -61,7 +61,7 @@ public class ErrorResponse {
         return new ErrorResponse(
                 500,
                 "INTERNAL_ERROR",
-                "Error interno del gateway.",
+                "Internal gateway error.",
                 path,
                 requestId
         );

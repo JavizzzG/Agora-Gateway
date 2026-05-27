@@ -1,35 +1,31 @@
 package com.agora.gateway.domain.model;
 
 /**
- * Parámetros del circuit breaker para cada servicio.
+ * Circuit breaker defaults shared by downstream services.
  *
- * Estos valores son decisiones de negocio:
- * - ¿Cuántos fallos toleramos antes de abrir el circuito?
- * - ¿Cuánto tiempo le damos al servicio para recuperarse?
+ * These are reliability decisions:
+ * - How many failures are tolerated before opening the circuit?
+ * - How long should the service have to recover?
  *
- * Están aquí en el dominio, no enterrados en application.yml
- * donde nadie los encontraría.
+ * Keeping them in the domain layer makes them visible and intentional.
  */
 public class CircuitBreakerConfig {
 
-    // Porcentaje de fallos para abrir el circuito
-    // 50% significa: si la mitad de los últimos requests fallan → OPEN
+    // Failure rate percentage needed to open the circuit.
     public static final float FAILURE_RATE_THRESHOLD = 50.0f;
 
-    // Tiempo que el circuito permanece abierto antes de probar de nuevo
+    // How long the circuit stays open before switching to half-open.
     public static final int WAIT_DURATION_SECONDS = 30;
 
-    // Requests que se dejan pasar en estado HALF_OPEN para probar
+    // Number of trial calls allowed while in HALF_OPEN state.
     public static final int PERMITTED_CALLS_IN_HALF_OPEN = 3;
 
-    // Tamaño de la ventana de requests que se evalúan
-    // Los últimos 10 requests determinan si el circuito se abre
+    // Sliding window size used for failure-rate calculation.
     public static final int SLIDING_WINDOW_SIZE = 10;
 
-    // Mínimo de requests antes de que el breaker empiece a evaluar
-    // Evita que 1 fallo en arranque abra el circuito
+    // Minimum calls before breaker metrics are considered stable.
     public static final int MINIMUM_CALLS = 5;
 
-    // Timeout por request — si el servicio tarda más de esto, cuenta como fallo
+    // Per-request timeout considered as a failure.
     public static final int TIMEOUT_SECONDS = 10;
 }

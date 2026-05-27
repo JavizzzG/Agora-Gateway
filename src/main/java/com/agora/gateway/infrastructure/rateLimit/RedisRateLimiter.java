@@ -11,18 +11,17 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 
 /**
- * Implementación del rate limiter usando Redis.
+ * Redis-backed rate limiter implementation.
  *
- * A diferencia de InMemoryRateLimiter:
- * - Los contadores son compartidos entre todas las instancias del gateway
- * - Sobreviven reinicios del gateway
- * - Redis expira las keys automáticamente con TTL
+ * Compared with InMemoryRateLimiter:
+ * - Counters are shared across all gateway instances
+ * - Counters survive process restarts
+ * - Redis handles key expiration via TTL
  *
- * Se registra con un nombre explícito para no chocar con el bean
- * redisRateLimiter que Spring Cloud Gateway auto-configura internamente.
+ * Uses an explicit bean name to avoid clashes with Spring Cloud Gateway's
+ * own internal redisRateLimiter bean.
  *
- * @Primary hace que Spring inyecte este en lugar de InMemoryRateLimiter
- * cuando ambos están en el classpath.
+ * @Primary ensures this implementation is injected by default.
  */
 @Primary
 @Component("gatewayRedisRateLimiter")
@@ -46,13 +45,10 @@ public class RedisRateLimiter implements RateLimiterPort {
         String redisKey = "ratelimit:" + routeGroup + ":" + clientKey;
 
         try {
-            // Incrementa el contador atómicamente
-            // Si la key no existe, Redis la crea con valor 0 y luego incrementa a 1
+            // Atomically increment per-window request counter.
             Long count = redisTemplate.opsForValue().increment(redisKey);
 
-            // En el primer request de esta ventana, establecemos el TTL
-            // Después de 60 segundos Redis borra la key automáticamente
-            // y el contador vuelve a cero
+            // On first hit, set one-minute TTL for fixed-window behavior.
             if (count != null && count == 1) {
                 redisTemplate.expire(redisKey, Duration.ofMinutes(1));
             }
@@ -60,9 +56,7 @@ public class RedisRateLimiter implements RateLimiterPort {
             return count != null && count <= limit;
 
         } catch (Exception e) {
-            // Si Redis no está disponible, permitimos el tráfico
-            // Es mejor tener el sistema funcionando sin rate limiting
-            // que tumbar el gateway porque Redis cayó
+            // Fail-open strategy: do not block traffic when Redis is unavailable.
             log.warn("redisRateLimitUnavailable key={} message={} allowingRequest=true", redisKey, e.getMessage(), e);
             return true;
         }

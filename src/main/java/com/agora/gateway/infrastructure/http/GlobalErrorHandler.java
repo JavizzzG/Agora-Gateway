@@ -20,27 +20,26 @@ import java.net.UnknownHostException;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Manejador global de errores del gateway.
+ * Global error handler for gateway-level exceptions.
  *
- * Intercepta CUALQUIER excepción que ocurra en el gateway
- * y la convierte en una respuesta JSON limpia y consistente.
+ * Intercepts any exception and converts it into a consistent JSON payload.
  *
- * Sin esto, el cliente puede recibir:
- * - Stack traces de Java
- * - Páginas HTML de error de Netty
- * - Respuestas vacías sin body
+ * Without this handler, clients may receive:
+ * - Java stack traces
+ * - Netty HTML error pages
+ * - Empty responses
  *
- * Con esto, el cliente SIEMPRE recibe un JSON con esta forma:
+ * With this handler, the client always receives JSON in this shape:
  * {
  *   "status": 503,
  *   "error": "SERVICE_UNAVAILABLE",
- *   "message": "El servicio no está disponible...",
+ *   "message": "The service is currently unavailable...",
  *   "path": "/users/profile",
  *   "timestamp": "2024-01-01T00:00:00Z"
  * }
  */
 @Component
-@Order(-1) // -1 para que corra ANTES que el manejador de errores por defecto de Spring
+@Order(-1) // Run before Spring's default error handler.
 public class GlobalErrorHandler implements ErrorWebExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalErrorHandler.class);
@@ -60,34 +59,33 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
         String path = exchange.getRequest().getURI().getPath();
         String requestId = RequestContextSupport.getRequestId(exchange);
 
-        // Determinamos qué tipo de error es y construimos la respuesta apropiada
+        // Identify exception type and map it to a standardized payload.
         ErrorResponse errorResponse = mapExceptionToError(ex, path, requestId);
 
-        // Logueamos el error para que quede registro en los logs del gateway
+        // Persist useful operational details in logs.
         logError(path, ex, errorResponse.getStatus(), requestId);
 
         return writeResponse(exchange, errorResponse);
     }
 
     /**
-     * Mapea cada tipo de excepción a un ErrorResponse apropiado.
-     * Aquí está la inteligencia del manejador.
+     * Maps each exception type to the appropriate ErrorResponse.
      */
     private ErrorResponse mapExceptionToError(Throwable ex, String path, String requestId) {
 
-        // Servicio destino no disponible — nadie escucha en ese puerto
+        // Downstream service is unavailable.
         if (ex instanceof ConnectException
                 || ex instanceof UnknownHostException) {
             return ErrorResponse.serviceUnavailable(path, requestId);
         }
 
-        // Timeout — el servicio tardó demasiado
+        // Downstream timeout.
         if (ex instanceof TimeoutException
                 || ex.getClass().getSimpleName().contains("Timeout")) {
             return ErrorResponse.gatewayTimeout(path, requestId);
         }
 
-        // ResponseStatusException — Spring lanza esto para 404, 405, etc.
+        // Framework-level HTTP errors such as 404 or 405.
         if (ex instanceof ResponseStatusException rse) {
             HttpStatus status = HttpStatus.resolve(rse.getStatusCode().value());
 
@@ -95,27 +93,27 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
                 return ErrorResponse.notFound(path, requestId);
             }
 
-            // Para otros ResponseStatusException usamos el status que trae
+            // Keep original status for non-404 response status errors.
             return new ErrorResponse(
                     rse.getStatusCode().value(),
                     rse.getStatusCode().toString(),
-                    rse.getReason() != null ? rse.getReason() : "Error en la solicitud",
+                    rse.getReason() != null ? rse.getReason() : "Request processing error.",
                     path,
                     requestId
             );
         }
 
-        // IO errors generales — problemas de red
+        // Generic I/O/network failures.
         if (ex instanceof IOException) {
             return ErrorResponse.serviceUnavailable(path, requestId);
         }
 
-        // Cualquier otra cosa — error interno del gateway
+        // Fallback for unexpected errors.
         return ErrorResponse.internalError(path, requestId);
     }
 
     /**
-     * Escribe la respuesta JSON en el exchange reactivo.
+     * Writes the JSON error payload to the reactive exchange.
      */
     private Mono<Void> writeResponse(ServerWebExchange exchange,
                                      ErrorResponse errorResponse) {
@@ -128,9 +126,9 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
         try {
             bytes = objectMapper.writeValueAsBytes(errorResponse);
         } catch (Exception e) {
-            // Si Jackson falla (no debería), fallback a string manual
+            // Fallback in case JSON serialization fails.
             bytes = ("{\"status\":500,\"error\":\"INTERNAL_ERROR\"," +
-                    "\"message\":\"Error serializando respuesta\"}").getBytes(StandardCharsets.UTF_8);
+                    "\"message\":\"Error serializing response.\"}").getBytes(StandardCharsets.UTF_8);
         }
 
         var buffer = response.bufferFactory().wrap(bytes);
@@ -138,8 +136,8 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
     }
 
     /**
-     * Log estructurado del error.
-     * Nivel WARN para errores de servicios destino, ERROR para errores internos.
+     * Structured error logging.
+     * WARN for non-critical errors, ERROR for server-side failures.
      */
     private void logError(String path, Throwable ex, int status, String requestId) {
         if (status >= 500 && status < 600) {
