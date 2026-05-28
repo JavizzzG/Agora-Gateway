@@ -28,6 +28,9 @@ public class RouteConfig {
     @Value("${services.workspace-url}")
     private String workspaceServiceUrl;
 
+    @Value("${services.ai-agent-url}")
+    private String aiAgentUrl;
+
     @Bean
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
@@ -54,6 +57,18 @@ public class RouteConfig {
                         .path("/workspaces/**")
                         .filters(f -> f.circuitBreaker(config -> config.setName("workspace-service").setFallbackUri("forward:/fallback/workspaces")))
                         .uri(URI.create(workspaceServiceUrl))
+                )
+
+                // ── AI Agent service ───────────────────────────
+                // Protegida — requiere JWT válido
+                // stripPrefix(1) elimina /ai para que /ai/chat -> /chat, /ai/health -> /health
+                .route("ai-agent-service", r -> r
+                        .path("/ai/**")
+                        .filters(f -> f
+                                .stripPrefix(1)
+                                .circuitBreaker(config -> config.setName("ai-agent-service").setFallbackUri("forward:/fallback/ai"))
+                        )
+                        .uri(URI.create(aiAgentUrl))
                 )
 
                 .build();
