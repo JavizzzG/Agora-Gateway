@@ -55,6 +55,7 @@ services:
   user-url: ${USER_SERVICE_URL}
   workspace-url: ${WORKSPACE_SERVICE_URL}
   ai-agent-url: ${AI_AGENT_URL}
+  payment-url: ${PAYMENT_SERVICE_URL}
 
 # Resilience4j circuit breaker configuration.
 resilience4j:

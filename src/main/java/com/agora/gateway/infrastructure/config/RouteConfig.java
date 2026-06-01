@@ -31,6 +31,9 @@ public class RouteConfig {
     @Value("${services.ai-agent-url}")
     private String aiAgentUrl;
 
+    @Value("${services.payment-url}")
+    private String paymentServiceUrl;
+
     @Bean
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
@@ -54,6 +57,13 @@ public class RouteConfig {
                         .path("/workspaces/**")
                         .filters(f -> f.circuitBreaker(config -> config.setName("workspace-service").setFallbackUri("forward:/fallback/workspaces")))
                         .uri(URI.create(workspaceServiceUrl))
+                )
+
+                // Protected payment endpoints (JWT required).
+                .route("payment-service", r -> r
+                        .path("/payment/**")
+                        .filters(f -> f.circuitBreaker(config -> config.setName("payment-service").setFallbackUri("forward:/fallback/payment")))
+                        .uri(URI.create(paymentServiceUrl))
                 )
 
                 // ── AI Agent service ───────────────────────────
