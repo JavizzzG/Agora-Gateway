@@ -68,13 +68,11 @@ public class RouteConfig {
 
                 // ── AI Agent service ───────────────────────────
                 // Protegida — requiere JWT válido
-                // stripPrefix(1) elimina /ai para que /ai/chat -> /chat, /ai/health -> /health
+                // stripPrefix(1) elimina /ai para que /ai/chat -> /chat
+                // Sin circuit breaker — la llamada al LLM puede demorar >30s
                 .route("ai-agent-service", r -> r
                         .path("/ai/**")
-                        .filters(f -> f
-                                .stripPrefix(1)
-                                .circuitBreaker(config -> config.setName("ai-agent-service").setFallbackUri("forward:/fallback/ai"))
-                        )
+                        .filters(f -> f.stripPrefix(1))
                         .uri(URI.create(aiAgentUrl))
                 )
 
