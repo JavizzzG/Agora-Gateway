@@ -11,6 +11,7 @@ public class PublicRoute {
             "/public/auth/authenticate", // Login
             "/public/auth/refresh", // Refresh token
             "/actuator/health",
+            "/payment/subscription/stripe",
             "/users/create",
             "/public/auth/google/callback"); // Google OAuth callback
 
