@@ -66,6 +66,7 @@ public class RouteConfig {
                         .uri(URI.create(paymentServiceUrl))
                 )
 
+
                 // ── AI Agent service ───────────────────────────
                 // Protegida — requiere JWT válido
                 // stripPrefix(1) elimina /ai para que /ai/chat -> /chat, /ai/health -> /health
