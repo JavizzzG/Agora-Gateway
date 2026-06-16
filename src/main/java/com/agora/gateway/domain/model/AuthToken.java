@@ -2,6 +2,9 @@ package com.agora.gateway.domain.model;
 
 import java.time.Instant;
 
+/**
+ * Domain representation of the validated authentication token.
+ */
 public class AuthToken {
     private final String userId;
     private final Instant expiresAt;

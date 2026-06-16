@@ -1,13 +1,13 @@
 package com.agora.gateway.domain.model;
 
 /**
- * Define los límites de peticiones por tipo de ruta.
+ * Defines request limits by route type.
  *
- * Estos valores son decisiones de negocio:
- * - ¿Cuántos intentos de login permite el sistema por minuto?
- * - ¿Cuántas peticiones normales puede hacer un usuario?
+ * These are business-level decisions:
+ * - How many login attempts are allowed per minute?
+ * - How many regular API requests are allowed per minute?
  *
- * Están aquí en el dominio, no enterrados en un filtro de infraestructura.
+ * They live in the domain layer instead of being hidden in infrastructure filters.
  */
 public class RateLimit {
 
@@ -24,7 +24,7 @@ public class RateLimit {
     public static final int API_BURST_CAPACITY = 500;
 
     /**
-     * Determina qué límite aplica según la ruta.
+     * Decides whether a route should use authentication limits.
      */
     public static boolean isAuthRoute(String path) {
         return path.startsWith("/public/auth/");

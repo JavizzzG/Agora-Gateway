@@ -19,8 +19,8 @@ import java.time.Instant;
 import java.util.HexFormat;
 
 /**
- * Cachea validaciones JWT exitosas en Redis para reducir verificaciones de firma repetidas.
- * No cachea tokens inválidos o expirados.
+ * Caches successful JWT validations in Redis to reduce repeated signature checks.
+ * Invalid or expired tokens are never cached.
  */
 @Primary
 @Component
@@ -83,7 +83,7 @@ public class RedisCachedTokenValidator implements TokenValidatorPort {
 
             return new AuthToken(entry.userId(), entry.expiresAt());
         } catch (Exception ignored) {
-            // Si Redis falla o el payload está corrupto, seguimos con validación normal.
+            // Cache failures should not block authentication flow.
             log.debug("Token cache read failed for key={}", redisKey, ignored);
             return null;
         }
@@ -101,7 +101,7 @@ public class RedisCachedTokenValidator implements TokenValidatorPort {
             String rawEntry = objectMapper.writeValueAsString(entry);
             tokenCacheRedisTemplate.opsForValue().set(redisKey, rawEntry, Duration.ofSeconds(effectiveTtl));
         } catch (Exception ignored) {
-            // Cache best-effort: nunca debe bloquear autenticación.
+            // Best-effort cache writes: authentication must always continue.
             log.debug("Token cache write failed for key={}", redisKey, ignored);
         }
     }

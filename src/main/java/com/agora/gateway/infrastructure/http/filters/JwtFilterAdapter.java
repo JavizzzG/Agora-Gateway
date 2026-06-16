@@ -23,18 +23,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
- * Adaptador de entrada HTTP — el puente entre Spring Cloud Gateway y el dominio.
+ * HTTP input adapter bridging Spring Cloud Gateway and the domain layer.
  *
- * Responsabilidades de esta clase:
- * - Extraer el token del header HTTP
- * - Llamar al puerto de autenticación
- * - Mutar el request con los headers del usuario
- * - Construir la respuesta 401 si falla
+ * Responsibilities:
+ * - Extract token from HTTP headers
+ * - Delegate authentication to the use case
+ * - Add authenticated user context to request headers
+ * - Build a 401 response when auth fails
  *
- * Lo que NO hace esta clase:
- * - Validar JWT (eso es JjwtTokenValidator)
- * - Decidir qué rutas son públicas (eso es PublicRoute)
- * - Conocer EdDSA o JJWT (eso es infraestructura de seguridad)
+ * This class does not:
+ * - Validate JWT signatures directly
+ * - Decide public vs protected routes
+ * - Depend on JWT library details
  */
 @Component
 public class JwtFilterAdapter implements GlobalFilter, Ordered {
@@ -53,12 +53,12 @@ public class JwtFilterAdapter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        // Rutas públicas — delegamos la decisión al dominio
+        // Public paths bypass authentication.
         if (PublicRoute.matches(path)) {
             return chain.filter(exchange);
         }
 
-        // Extraemos el token del header
+        // Extract token from Authorization header.
         String authHeader = exchange.getRequest()
                 .getHeaders()
                 .getFirst(HttpHeaders.AUTHORIZATION);
@@ -66,10 +66,10 @@ public class JwtFilterAdapter implements GlobalFilter, Ordered {
         String rawToken = extractToken(authHeader);
 
         try {
-            // Llamamos al caso de uso — el filtro no sabe cómo funciona
+            // Authenticate through the application use case.
             UserContext userContext = authenticationPort.authenticate(rawToken);
 
-            // Mutamos el request: agregamos contexto del usuario, quitamos JWT crudo
+            // Propagate user identity and remove raw JWT from forwarded headers.
             var mutatedRequest = exchange.getRequest().mutate()
                     .header("X-User-Id", userContext.getUserId())
                     .headers(h -> h.remove(HttpHeaders.AUTHORIZATION))

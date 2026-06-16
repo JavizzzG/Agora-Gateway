@@ -10,24 +10,24 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Implementación en memoria del rate limiter usando Bucket4j.
+ * In-memory rate limiter implementation backed by Bucket4j.
  *
- * Bucket4j usa el algoritmo "token bucket":
- * - Cada cliente tiene un bucket con N tokens
- * - Cada petición consume 1 token
- * - Los tokens se recargan a una tasa fija por minuto
- * - Si no hay tokens, la petición se rechaza
+ * Bucket4j uses the token-bucket algorithm:
+ * - Each client has a bucket with N tokens
+ * - Every request consumes 1 token
+ * - Tokens refill at a fixed rate per minute
+ * - If no token is available, the request is rejected
  *
- * ConcurrentHashMap porque el gateway es reactivo y
- * múltiples threads pueden acceder al mismo tiempo.
+ * ConcurrentHashMap is used because reactive execution can involve
+ * concurrent access from multiple threads.
  *
- * LIMITACIÓN: los contadores se pierden si el gateway se reinicia.
- * Para producción con múltiples instancias del gateway → usar Redis.
+ * Limitation: counters are lost on restart.
+ * For distributed production setups, use RedisRateLimiter.
  */
 @Component
 public class InMemoryRateLimiter implements RateLimiterPort {
 
-    // Un bucket por cliente — la key es IP o userId
+    // One bucket per client key (IP or userId).
     private final ConcurrentHashMap<String, Bucket> authBuckets = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Bucket> apiBuckets  = new ConcurrentHashMap<>();
 
@@ -37,15 +37,12 @@ public class InMemoryRateLimiter implements RateLimiterPort {
                 ? authBuckets.computeIfAbsent(clientKey, k -> createAuthBucket())
                 : apiBuckets.computeIfAbsent(clientKey, k -> createApiBucket());
 
-        // tryConsume(1) intenta consumir 1 token
-        // devuelve true si había token disponible (petición permitida)
-        // devuelve false si el bucket está vacío (petición rechazada)
+        // tryConsume(1): true if token was consumed, false if bucket is empty.
         return bucket.tryConsume(1);
     }
 
     /**
-     * Bucket para rutas de autenticación.
-     * Límite estricto — 10 peticiones por minuto con burst de 20.
+     * Bucket policy for authentication routes.
      */
     private Bucket createAuthBucket() {
         Bandwidth limit = Bandwidth.builder()
@@ -56,8 +53,7 @@ public class InMemoryRateLimiter implements RateLimiterPort {
     }
 
     /**
-     * Bucket para rutas normales de la API.
-     * Límite amplio — 100 peticiones por minuto con burst de 200.
+     * Bucket policy for regular API routes.
      */
     private Bucket createApiBucket() {
         Bandwidth limit = Bandwidth.builder()
