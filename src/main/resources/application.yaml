@@ -55,6 +55,7 @@ services:
   user-url: ${USER_SERVICE_URL}
   workspace-url: ${WORKSPACE_SERVICE_URL}
   ai-agent-url: ${AI_AGENT_URL}
+  media-url: ${MEDIA_SERVICE_URL}
   payment-url: ${PAYMENT_SERVICE_URL}
 
 # Resilience4j circuit breaker configuration.
@@ -101,6 +102,8 @@ resilience4j:
         base-config: default
       auth-service:
         timeout-duration: 10s
+      ai-agent-service:
+        timeout-duration: 120s
 
 # Expose circuit breaker health and metrics in actuator.
 management:

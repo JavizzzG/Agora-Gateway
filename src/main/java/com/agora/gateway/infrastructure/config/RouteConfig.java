@@ -31,6 +31,9 @@ public class RouteConfig {
     @Value("${services.ai-agent-url}")
     private String aiAgentUrl;
 
+    @Value("${services.media-url}")
+    private String mediaServiceUrl;
+  
     @Value("${services.payment-url}")
     private String paymentServiceUrl;
 
@@ -75,6 +78,15 @@ public class RouteConfig {
                         .path("/ai/**")
                         .filters(f -> f.stripPrefix(1))
                         .uri(URI.create(aiAgentUrl))
+                )
+
+                // ── Media service ──────────────────────────────
+                // Protegida — requiere JWT válido
+                // NOTA: el media service ya incluye /media como prefix en app.include_router(router, prefix="/media")
+                .route("media-service", r -> r
+                        .path("/media/**")
+                        .filters(f -> f.circuitBreaker(config -> config.setName("media-service").setFallbackUri("forward:/fallback/media")))
+                        .uri(URI.create(mediaServiceUrl))
                 )
 
                 .build();
