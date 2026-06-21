@@ -6,6 +6,8 @@ services:
     container_name: agora-gateway
     env_file:
       - .env
+    environment:
+      MEDIA_SERVICE_URL: http://media-service:8003
     ports:
       - "8080:8080"
     healthcheck:
