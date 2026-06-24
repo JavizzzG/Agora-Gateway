@@ -2,7 +2,7 @@
 # ETAPA 1: construcción
 # Usamos una imagen con Maven y JDK para compilar
 # ─────────────────────────────────────────
-FROM maven:3.9.6-eclipse-temurin-21 AS builder
+FROM --platform=$TARGETPLATFORM maven:3.9.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN mvn clean package -DskipTests -q
 # ETAPA 2: imagen final
 # Solo JRE (no JDK completo) — imagen más pequeña y segura
 # ─────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine
+FROM --platform=$TARGETPLATFORM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
