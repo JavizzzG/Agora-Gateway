@@ -10,11 +10,13 @@ WORKDIR /app
 # Esto es un truco de caché: si el pom.xml no cambia, Docker
 # reutiliza esta capa y no re-descarga las dependencias cada vez
 COPY pom.xml .
-RUN mvn dependency:go-offline -q
+RUN mvn dependency:go-offline -q -T 4
 
 # Ahora copiamos el código fuente y compilamos
+# -T 4: paraleliza la compilación en 4 hilos
+# -q: modo silencioso (menos output, más rápido)
 COPY src ./src
-RUN mvn clean package -DskipTests -q
+RUN mvn clean package -DskipTests -q -T 4
 
 # ─────────────────────────────────────────
 # ETAPA 2: imagen final
